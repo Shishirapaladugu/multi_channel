@@ -1,0 +1,44 @@
+
+#%RAML 1.0
+title: Marketing Multi-Channel Campaign API
+version: v1
+baseUri: http://localhost:8081
+
+types:
+  CampaignTriggerRequest:
+    type: object
+    properties:
+      executionMode?:
+        type: string
+        enum: [DRY_RUN, PREVIEW, EXECUTE]
+      segmentCriteria:
+        type: object
+      channels:
+        type: array
+        items:
+          type: string
+          enum: [EMAIL, SMS, PUSH]
+      templateRefs:
+        type: object
+      schedulingWindow:
+        type: object
+      guards:
+        type: object
+      previewRecipient?:
+        type: string
+
+/campaigns:
+  /{campaignId}:
+    /trigger:
+      post:
+        description: Trigger a multi-channel marketing campaign
+        body:
+          application/json:
+            type: CampaignTriggerRequest
+        responses:
+          200:
+            body:
+              application/json:
+                example:
+                  message: Campaign trigger request received
+                  status: ACCEPTED

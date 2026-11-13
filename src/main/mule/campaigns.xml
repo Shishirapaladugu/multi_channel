@@ -1,0 +1,907 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <apikit:config name="campaigns-config" api="campaigns.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<http:listener-config name="HTTPListenerConfig" doc:name="HTTP Listener config" doc:id="9c809eed-ed67-46a1-a6c2-becabc2b5d11" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="f3984538-3fa0-4c7d-bc8c-b97d4e907d81" >
+		<db:my-sql-connection host="0.0.0.0" port="3036" user="Goutham" password="Goutham123" database="marketing_campaign_db" />
+	</db:config>
+	<flow name="campaigns-main">
+        <http:listener config-ref="HTTPListenerConfig" path="/api/v1/*" doc:name="HttpListener">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="campaigns-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="campaigns-console">
+        <http:listener config-ref="HTTPListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="campaigns-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\campaigns\(campaignId)\trigger:application\json:campaigns-config">
+        <ee:transform doc:name="exract the campid">
+            <ee:variables>
+                <ee:set-variable variableName="campaignId">attributes.uriParams.'campaignId'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <set-variable value="#[payload]" doc:name="Store Original Request" doc:id="db9d8558-1632-4b70-8a9c-8af3ee2fc842" variableName="requestData"/>
+		<ee:transform doc:name="campaign request" doc:id="542fb7d9-88ee-4435-9630-1cee160e663b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/java
+---
+{
+    campaignId: "CAM001",
+    campaignName: "Diwali Marketing Campaign",
+    campaignStatus: "APPROVED",
+    approvedBy: "marketing-lead",
+    activeFrom: "2026-01-01T00:00:00",
+    activeTo: "2027-12-31T23:59:59",
+    ownerEmail: "marketing@example.com"
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="validate the campaign id" doc:id="e0fd78e2-6f53-4f06-80af-2dfa86e6dd13" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var campaign = payload
+var requestedCampaignId = vars.campaignId
+var currentTime = now()
+
+var activeFrom =
+    campaign.activeFrom as LocalDateTime {
+        format: "yyyy-MM-dd'T'HH:mm:ss"
+    }
+
+var activeTo =
+    campaign.activeTo as LocalDateTime {
+        format: "yyyy-MM-dd'T'HH:mm:ss"
+    }
+
+var currentLocalTime =
+    currentTime as LocalDateTime
+
+---
+{
+    campaignId: requestedCampaignId,
+    campaignName: campaign.campaignName,
+    campaignStatus: campaign.campaignStatus,
+
+    validationStatus:
+        if (campaign.campaignId != requestedCampaignId)
+            "NOT_FOUND"
+        else if (campaign.campaignStatus != "APPROVED")
+            "NOT_APPROVED"
+        else if (currentLocalTime < activeFrom)
+            "NOT_YET_ACTIVE"
+        else if (currentLocalTime > activeTo)
+            "EXPIRED"
+        else
+            "VALID",
+
+    approvedBy: campaign.approvedBy,
+    ownerEmail: campaign.ownerEmail
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="593557c1-d709-456d-b543-78365756ac89" >
+			<when expression='#[payload.validationStatus == "VALID"]'>
+				<ee:transform doc:name="valid campaign">
+            <ee:message>
+                <ee:set-payload><![CDATA[{
+  "campaignId": "CAM001",
+  "campaignName": "Diwali Marketing Campaign",
+  "campaignStatus": "APPROVED",
+  "validationStatus": "VALID",
+  "approvedBy": "marketing-lead",
+  "ownerEmail": "marketing@example.com"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+				<ee:transform doc:name="load hardcord customers" doc:id="086e5e1c-af6e-4245-a72e-e8aff6fc59e0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+[
+    {
+        customerId: "CUST001",
+        firstName: "Meena",
+        lastName: "Raghavan",
+        email: "customer1@gmail.com",
+        mobile: "9876543210",
+        pushToken: "PUSH_TOKEN_001",
+        emailConsent: true,
+        smsConsent: false,
+        pushConsent: true,
+        customerTier: "PLATINUM",
+        rewardPoints: 4820,
+        offerCode: "FEST25-MR7Q",
+        offerExpiry: "2026-09-30",
+        recommendedCategory: "Electronics",
+        unsubscribeUrl: "https://company.example.com/u/CUST001",
+        senderIdentity: "offers@company.example.com"
+    },
+    {
+        customerId: "CUST002",
+        firstName: "Ganesh",
+        lastName: "Kumar",
+        email: "customer2@gmail.com",
+        mobile: "9876543211",
+        pushToken: "PUSH_TOKEN_002",
+        emailConsent: true,
+        smsConsent: true,
+        pushConsent: true,
+        customerTier: "GOLD",
+        rewardPoints: 3250,
+        offerCode: "FEST20-GK2P",
+        offerExpiry: "2026-09-28",
+        recommendedCategory: "Fashion",
+        unsubscribeUrl: "https://company.example.com/u/CUST002",
+        senderIdentity: "offers@company.example.com"
+    },
+    {
+        customerId: "CUST003",
+        firstName: "Ananya",
+        lastName: "Sharma",
+        email: "customer3@gmail.com",
+        mobile: "9876543212",
+        pushToken: "PUSH_TOKEN_003",
+        emailConsent: false,
+        smsConsent: false,
+        pushConsent: true,
+        customerTier: "SILVER",
+        rewardPoints: 1200,
+        offerCode: "FEST10-AS3K",
+        offerExpiry: "2026-09-25",
+        recommendedCategory: "Home Appliances",
+        unsubscribeUrl: "https://company.example.com/u/CUST003",
+        senderIdentity: "offers@company.example.com"
+    },
+    {
+        customerId: "CUST004",
+        firstName: "Rahul",
+        lastName: "Verma",
+        email: "customer4@gmail.com",
+        mobile: "9876543213",
+        pushToken: "PUSH_TOKEN_004",
+        emailConsent: true,
+        smsConsent: true,
+        pushConsent: false,
+        customerTier: "GOLD",
+        rewardPoints: 2800,
+        offerCode: "FEST20-RV4M",
+        offerExpiry: "2026-09-29",
+        recommendedCategory: "Mobiles",
+        unsubscribeUrl: "https://company.example.com/u/CUST004",
+        senderIdentity: "offers@company.example.com"
+    },
+    {
+        customerId: "CUST005",
+        firstName: "Priya",
+        lastName: "Reddy",
+        email: null,
+        mobile: null,
+        pushToken: null,
+        emailConsent: true,
+        smsConsent: true,
+        pushConsent: false,
+        customerTier: "SILVER",
+        rewardPoints: 950,
+        offerCode: "FEST10-PR5N",
+        offerExpiry: "2026-09-27",
+        recommendedCategory: "Books",
+        unsubscribeUrl: "https://company.example.com/u/CUST005",
+        senderIdentity: "offers@company.example.com"
+    }
+]
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Validate Customer Consent" doc:id="f74c3d2a-cfc7-4a12-8f10-77a8598c82c6" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) ->
+        customer ++ {
+            allowedChannels:
+                (if (customer.emailConsent ) ["EMAIL"] else [])
+                ++
+                (if (customer.smsConsent ) ["SMS"] else [])
+                ++
+                (if (customer.pushConsent ) ["PUSH"] else [])
+        }
+    )
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Check Customer Suppression" doc:id="05cef71f-303c-4270-bd2e-bb87ea938da9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+// Temporary hardcoded suppression list
+var suppressionList = ["CUST002"]
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) ->
+        customer ++ {
+            suppressionStatus:
+                if (suppressionList contains customer.customerId)
+                    "SUPPRESSED"
+                else
+                    "NOT_SUPPRESSED"
+        }
+    )
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Check Frequency Cap" doc:id="de966052-d6d4-4ed4-8cbe-8d5451425aec" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var contactHistory = [
+    {customerId: "CUST001", contactedAt: now() - |P1D|},
+    {customerId: "CUST001", contactedAt: now() - |P3D|},
+    {customerId: "CUST001", contactedAt: now() - |P5D|},
+    {customerId: "CUST003", contactedAt: now() - |P1D|},
+    {customerId: "CUST004", contactedAt: now() - |P4D|}
+]
+
+var customers =
+    (payload.customers default []) as Array<Object>
+
+var campaign = payload.campaign
+
+var currentTime = now()
+var weekStart = currentTime - |P7D|
+
+---
+{
+    campaign: campaign,
+
+    customers: customers map ((customer) -> do {
+
+        var history =
+            contactHistory filter ((record) ->
+                record.customerId == customer.customerId
+                and record.contactedAt >= weekStart
+                and record.contactedAt <= currentTime
+            )
+
+        var historyCount = sizeOf(history)
+
+        var lastContact =
+            if (historyCount > 0)
+                (history maxBy $.contactedAt).contactedAt
+            else
+                null
+
+        var shouldCheck =
+            customer.suppressionStatus == "NOT_SUPPRESSED"
+            and !isEmpty(customer.allowedChannels default [])
+
+        var minimumGapNotMet =
+            if (lastContact == null)
+                false
+            else
+                currentTime < ((lastContact as DateTime) + |PT48H|)
+
+        var frequencyReason =
+            if (historyCount >= 3)
+                "WEEKLY_CAP_EXCEEDED"
+            else if (minimumGapNotMet)
+                "MINIMUM_48_HOURS_NOT_MET"
+            else
+                null
+
+        ---
+        customer ++ {
+            messagesInLast7Days: historyCount,
+
+            frequencyStatus:
+                if (!shouldCheck)
+                    "NOT_CHECKED"
+                else if (frequencyReason != null)
+                    "EXCLUDED"
+                else
+                    "ELIGIBLE",
+
+            frequencyExclusionReason:
+                if (shouldCheck)
+                    frequencyReason
+                else
+                    null
+        }
+    })
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Validate Reachable Addresses" doc:id="acfb567d-bb10-4a69-b432-04c74a271004" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) -> do {
+
+        var allowed =
+            (customer.allowedChannels default [])
+                map ((channel) -> channel as String)
+
+        var reachable =
+            if (customer.frequencyStatus != "ELIGIBLE")
+                []
+            else
+                allowed filter ((channel) ->
+                    if (channel == "EMAIL")
+                        !isEmpty(customer.email default "")
+                    else if (channel == "SMS")
+                        !isEmpty(customer.mobile default "")
+                    else if (channel == "PUSH")
+                        !isEmpty(customer.pushToken default "")
+                    else
+                        false
+                )
+
+        var unreachable =
+            allowed filter ((channel) ->
+                !(reachable contains channel)
+            )
+
+        ---
+        customer ++ {
+            reachableChannels: reachable,
+            unreachableChannels: unreachable,
+            reachabilityStatus:
+                if (customer.frequencyStatus != "ELIGIBLE")
+                    "NOT_CHECKED"
+                else if (isEmpty(reachable))
+                    "UNREACHABLE"
+                else
+                    "REACHABLE"
+        }
+    })
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Select Customer Channels" doc:id="7ce599ad-3cb2-48d8-8af2-cdddb169bfb2" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var requestedChannels = vars.requestData.channels default []
+
+var preferenceRecords = [
+    {customerId: "CUST001", preferredChannels: ["EMAIL", "PUSH"]},
+    {customerId: "CUST002", preferredChannels: ["SMS"]},
+    {customerId: "CUST003", preferredChannels: ["PUSH"]},
+    {customerId: "CUST004", preferredChannels: ["SMS", "EMAIL"]},
+    {customerId: "CUST005", preferredChannels: ["EMAIL"]}
+]
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) -> do {
+
+        var preference =
+            (preferenceRecords filter ((record) ->
+                record.customerId == customer.customerId
+            ))[0].preferredChannels default []
+
+        var availableChannels =
+            (customer.reachableChannels default [])
+                filter ((channel) ->
+                    requestedChannels contains channel
+                )
+
+        var preferred =
+            availableChannels filter ((channel) ->
+                preference contains channel
+            )
+
+        var other =
+            availableChannels filter ((channel) ->
+                !(preference contains channel)
+            )
+
+        ---
+        customer ++ {
+            preferredChannels: preferred,
+            selectedChannels: preferred ++ other
+        }
+    })
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Prepare Customer Scheduling Data" doc:id="ca79f77a-c04e-4445-aed1-b50d6283dee0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var customerSchedule = [
+    {
+        customerId: "CUST001",
+        timezone: "Asia/Kolkata",
+        quietHoursStart: "21:00",
+        quietHoursEnd: "09:00"
+    },
+    {
+        customerId: "CUST002",
+        timezone: "Asia/Kolkata",
+        quietHoursStart: "21:00",
+        quietHoursEnd: "09:00"
+    },
+    {
+        customerId: "CUST003",
+        timezone: "Asia/Kolkata",
+        quietHoursStart: "21:00",
+        quietHoursEnd: "09:00"
+    },
+    {
+        customerId: "CUST004",
+        timezone: "Asia/Kolkata",
+        quietHoursStart: "21:00",
+        quietHoursEnd: "09:00"
+    },
+    {
+        customerId: "CUST005",
+        timezone: "Asia/Kolkata",
+        quietHoursStart: "21:00",
+        quietHoursEnd: "09:00"
+    }
+]
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) -> do {
+        var schedule =
+            (customerSchedule filter ((item) ->
+                item.customerId == customer.customerId
+            ))[0]
+        ---
+        customer ++ {
+            timezone: schedule.timezone,
+            quietHoursStart: schedule.quietHoursStart,
+            quietHoursEnd: schedule.quietHoursEnd
+        }
+    })
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Apply Quiet Hours" doc:id="c8207592-7047-4b67-a403-f1493e241cbf" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var currentTime = now()
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers map ((customer) -> do {
+
+        var localTime =
+            currentTime >> customer.timezone
+
+        var localHour =
+            localTime.hour
+
+        var localMinute =
+            localTime.minute
+
+        var currentMinutes =
+            localHour * 60 + localMinute
+
+        var quietStart = 21 * 60
+        var quietEnd = 9 * 60
+
+        var isQuietHours =
+            currentMinutes >= quietStart
+            or currentMinutes < quietEnd
+
+        ---
+        customer ++ {
+            schedulingStatus:
+                if (isEmpty(customer.selectedChannels default []))
+                    "NOT_SCHEDULED"
+                else if (customer.frequencyStatus != "ELIGIBLE")
+                    "NOT_SCHEDULED"
+                else if (isQuietHours)
+                    "DEFERRED"
+                else
+                    "READY",
+            scheduledSendAt:
+                if (isQuietHours)
+                    (
+                        (localTime as Date) + |P1D|
+                    ) ++ |PT9H|
+                else
+                    localTime
+        }
+    })
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Build Recipient Channel Records" doc:id="c5d6cc86-623d-40e4-8925-e0940d8e26ec" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var recipientRecords =
+    flatten(
+        (payload.customers default []) map ((customer)  ->
+            (customer.selectedChannels default [])
+                map ((channel) -> {
+                    customerId: (customer.customerId default "") as String,
+                    channel: (channel default "") as String,
+
+                    email: customer.email,
+                    mobile: customer.mobile,
+                    pushToken: customer.pushToken,
+
+                    firstName: customer.firstName,
+                    lastName: customer.lastName,
+                    customerTier: customer.customerTier,
+                    rewardPoints: customer.rewardPoints,
+                    offerCode: customer.offerCode,
+                    offerExpiry: customer.offerExpiry,
+                    recommendedCategory: customer.recommendedCategory,
+                    unsubscribeUrl: customer.unsubscribeUrl,
+                    senderIdentity: customer.senderIdentity,
+
+                    timezone: customer.timezone,
+                    schedulingStatus: customer.schedulingStatus,
+                    scheduledSendAt: customer.scheduledSendAt,
+                    frequencyStatus: customer.frequencyStatus,
+                    reachabilityStatus: customer.reachabilityStatus
+                })
+        )
+    )
+
+var validRecords =
+    recipientRecords filter ((record) ->
+        !isEmpty(record.customerId)
+        and !isEmpty(record.channel)
+    )
+
+var uniqueRecords =
+    validRecords distinctBy ((record) -> {
+        customerId: record.customerId,
+        channel: record.channel
+    })
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers,
+    recipientChannels: uniqueRecords
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Deduplicate Channel Addresses" doc:id="f5ee64fb-cde8-447e-93d7-ed7fd6b51a37" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+// Explicitly treat recipientChannels as an array of objects
+var sourceRecords =
+    (payload.recipientChannels default []) as Array<Object>
+
+var records =
+    sourceRecords map ((record) -> {
+        customerId: (record.customerId default "") as String,
+        channel: (record.channel default "") as String,
+
+        address:
+            if ((record.channel default "") as String == "EMAIL")
+                (record.email default "") as String
+            else if ((record.channel default "") as String == "SMS")
+                (record.mobile default "") as String
+            else if ((record.channel default "") as String == "PUSH")
+                (record.pushToken default "") as String
+            else
+                "",
+
+        email: record.email default null,
+        mobile: record.mobile default null,
+        pushToken: record.pushToken default null,
+
+        firstName: record.firstName,
+        lastName: record.lastName,
+        customerTier: record.customerTier,
+        rewardPoints: record.rewardPoints,
+        offerCode: record.offerCode,
+        offerExpiry: record.offerExpiry,
+        recommendedCategory: record.recommendedCategory,
+        unsubscribeUrl: record.unsubscribeUrl,
+        senderIdentity: record.senderIdentity,
+
+        timezone: record.timezone,
+        schedulingStatus: record.schedulingStatus,
+        scheduledSendAt: record.scheduledSendAt
+    })
+
+var validRecords =
+    (records filter ((record) ->
+        !isEmpty(record.address)
+    )) as Array<Object>
+
+var uniqueRecords =
+    validRecords distinctBy ((record) -> {
+        channel: record.channel,
+        address: record.address
+    })
+
+---
+{
+    campaign: payload.campaign,
+    customers: payload.customers,
+    recipientChannels: uniqueRecords,
+    duplicateAddressCount:
+        sizeOf(validRecords) - sizeOf(uniqueRecords),
+    invalidAddressCount:
+        sizeOf(records) - sizeOf(validRecords)
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Render Channel Messages." doc:id="df65b705-5d5c-4b04-a3cc-7bdbc85962b1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+
+var campaign = payload.campaign
+
+var recipients =
+    (payload.recipientChannels default []) as Array<Object>
+
+var renderedMessages =
+    recipients map ((recipient) -> do {
+
+        var customerName =
+            (recipient.firstName default "") as String
+
+        var offerCode =
+            (recipient.offerCode default "") as String
+
+        var offerExpiry =
+            (recipient.offerExpiry default "") as String
+
+        var category =
+            (recipient.recommendedCategory default "") as String
+
+        var tier =
+            (recipient.customerTier default "") as String
+
+        var points =
+            (recipient.rewardPoints default 0) as String
+
+        ---
+        recipient ++ {
+            templateId:
+                if (recipient.channel == "EMAIL")
+                    "TMPL-FESTIVE-EMAIL-V4"
+                else if (recipient.channel == "SMS")
+                    "TMPL-FESTIVE-SMS-V2"
+                else
+                    "TMPL-FESTIVE-PUSH-V1",
+
+            message:
+                if (recipient.channel == "EMAIL")
+                    {
+                        subject: "A special offer for you, " ++ customerName,
+                        body:
+                            "Hello " ++ customerName ++ ",\n\n" ++
+                            "Enjoy your exclusive festive offer!\n" ++
+                            "Customer Tier: " ++ tier ++ "\n" ++
+                            "Reward Points: " ++ points ++ "\n" ++
+                            "Offer Code: " ++ offerCode ++ "\n" ++
+                            "Offer Expiry: " ++ offerExpiry ++ "\n" ++
+                            "Recommended Category: " ++ category ++ "\n\n" ++
+                            "Unsubscribe: " ++
+                            (recipient.unsubscribeUrl default "")
+                    }
+                else if (recipient.channel == "SMS")
+                    {
+                        registeredTemplateRef: "DLT-FEST-2026-001",
+                        senderId: "COMPNY",
+                        body:
+                            "Hi " ++ customerName ++
+                            "! Use " ++ offerCode ++
+                            " for festive offers on " ++ category ++
+                            ". Valid till " ++ offerExpiry ++
+                            ". Reply STOP to opt out."
+                    }
+                else
+                    {
+                        title: "A festive offer is waiting!",
+                        body:
+                            "Hi " ++ customerName ++
+                            "! Use " ++ offerCode ++
+                            " to enjoy offers on " ++ category ++
+                            ". Valid till " ++ offerExpiry ++ "."
+                    }
+        }
+    })
+
+---
+{
+    campaign: campaign,
+    customers: payload.customers,
+    recipientChannels: renderedMessages,
+    recipientCount: sizeOf(renderedMessages)
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Invalid campaign" doc:id="057959dd-4faf-41fe-846b-bc2300053ae9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[
+%dw 2.0
+output application/json
+var validation = payload
+---
+{
+    message: "Campaign cannot be executed",
+    campaignId: validation.campaignId,
+    campaignName: validation.campaignName,
+    validationStatus: validation.validationStatus,
+    status: "REJECTED",
+    reason:
+        if (validation.validationStatus == "NOT_FOUND")
+            "Campaign does not exist"
+        else if (validation.validationStatus == "NOT_APPROVED")
+            "Campaign is not approved"
+        else
+            "Campaign validation failed"
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+</mule>
